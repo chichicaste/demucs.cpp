@@ -227,6 +227,6 @@ int main(int argc, const char **argv)
             }
         }
 
-        write_audio_file(target_waveform, p_target);
+        write_audio_file(target_waveform, p_target.string());
     }
 }

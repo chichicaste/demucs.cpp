@@ -495,7 +495,8 @@ inline void debug_tensor_4dxh(const Eigen::Tensor4dXh &x,
                 for (int l = 0; l < x.dimension(3); ++l)
                 {
                     Eigen::half val = x(i, j, k, l);
-                    x_stddev += (val - x_mean) * (val - x_mean);
+                    float val_f = static_cast<float>(val);
+                    x_stddev += (val_f - x_mean) * (val_f - x_mean);
                 }
             }
         }
