@@ -34,11 +34,6 @@ jobs:
         vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
         vcpkgDirectory: '${{ runner.workspace }}/vcpkg'
         
-    - name: Install dependencies with vcpkg
-      run: |
-        cd ${{ runner.workspace }}/vcpkg
-        .\vcpkg install openblas:x64-windows lapack:x64-windows
-        
     - name: Configure CMake
       run: |
         mkdir build
