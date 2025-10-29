@@ -1,0 +1,90 @@
+name: MSVC Build and Release
+
+on:
+  push:
+    branches:
+      - msvc-support
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - msvc-support
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        config: [Release]
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+        
+    - name: Install dependencies with vcpkg
+      run: |
+        vcpkg install openblas:x64-windows
+        
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+        
+    - name: Build
+      run: |
+        cd build
+        cmake --build . --config ${{ matrix.config }} --parallel 8
+        
+    - name: Run tests
+      run: |
+        cd build
+        .\${{ matrix.config }}\demucs.cpp.test.exe
+      continue-on-error: true
+        
+    - name: Prepare release artifacts
+      run: |
+        mkdir release-artifacts
+        Copy-Item build\${{ matrix.config }}\demucs.cpp.main.exe release-artifacts\
+        Copy-Item build\${{ matrix.config }}\demucs_ft.cpp.main.exe release-artifacts\
+        Copy-Item build\${{ matrix.config }}\demucs_mt.cpp.main.exe release-artifacts\
+        Copy-Item build\${{ matrix.config }}\demucs_ft_mt.cpp.main.exe release-artifacts\
+        Copy-Item build\${{ matrix.config }}\demucs_v3.cpp.main.exe release-artifacts\
+        Copy-Item build\${{ matrix.config }}\demucs_v3_mt.cpp.main.exe release-artifacts\
+        Copy-Item README.md release-artifacts\
+        Copy-Item README_MSVC.md release-artifacts\
+        Copy-Item LICENSE release-artifacts\
+        
+    - name: Create ZIP archive
+      run: |
+        Compress-Archive -Path release-artifacts\* -DestinationPath demucs.cpp-windows-x64-${{ matrix.config }}.zip
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: demucs.cpp-windows-x64-${{ matrix.config }}
+        path: demucs.cpp-windows-x64-${{ matrix.config }}.zip
+        retention-days: 30
+        
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: demucs.cpp-windows-x64-${{ matrix.config }}.zip
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
